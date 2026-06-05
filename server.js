@@ -23,7 +23,8 @@ const Datastore = require('@seald-io/nedb');
 // INISIALISASI NEDB (Database Lokal Tanpa Install)
 // ==========================================
 const db = new Datastore({ filename: 'sensor_data.db', autoload: true });
-console.log('✅ Terhubung ke NeDB lokal (sensor_data.db)');
+const securityDb = new Datastore({ filename: 'security_data.db', autoload: true });
+console.log('✅ Terhubung ke NeDB lokal (sensor_data.db & security_data.db)');
 
 mqttClient.on('connect', () => {
   console.log(`✅ Terhubung ke MQTT Broker AWS di ${AWS_MQTT_IP}`);
@@ -31,6 +32,8 @@ mqttClient.on('connect', () => {
   mqttClient.subscribe('traffic_light/status');
   // Berlangganan ke data sensor
   mqttClient.subscribe('traffic_light/sensor');
+  // Berlangganan ke data keamanan
+  mqttClient.subscribe('traffic_light/security');
 });
 
 mqttClient.on('message', (topic, message) => {
@@ -63,6 +66,24 @@ mqttClient.on('message', (topic, message) => {
       });
     } catch (e) {
       console.error("Gagal memparsing JSON dari MQTT sensor. Isi pesan: ", message.toString());
+    }
+  } else if (topic === 'traffic_light/security') {
+    try {
+      const data = JSON.parse(message.toString());
+      if (data.motion) {
+        const securityLog = {
+          event: 'Motion Detected',
+          timestamp: Date.now()
+        };
+        securityDb.insert(securityLog, (err, newDoc) => {
+          if (!err) {
+            io.emit('security_alert', securityLog);
+            console.log(`🚨 Peringatan Keamanan: Gerakan terdeteksi!`);
+          }
+        });
+      }
+    } catch (e) {
+      console.error("Gagal memparsing JSON dari MQTT security.");
     }
   }
 });
@@ -98,6 +119,17 @@ app.get('/api/sensor-history', (req, res) => {
     } else {
       // Kita balik arraynya agar data terlama di kiri dan terbaru di kanan grafik
       res.json(docs.reverse());
+    }
+  });
+});
+
+// Mengambil 50 data historis keamanan terakhir
+app.get('/api/security-history', (req, res) => {
+  securityDb.find({}).sort({ timestamp: -1 }).limit(50).exec((err, docs) => {
+    if (err) {
+      res.status(500).json({ error: "Gagal mengambil data riwayat keamanan" });
+    } else {
+      res.json(docs);
     }
   });
 });
