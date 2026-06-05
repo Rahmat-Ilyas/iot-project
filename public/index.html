@@ -204,8 +204,9 @@
                             <div class="unit">%</div>
                         </div>
                     </div>
-                    <div style="text-align: center; font-size: 0.8rem; color: #94a3b8;">
-                        Update terakhir: <span id="lastUpdate">Belum ada data</span>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8; margin-top: 15px;">
+                        <div>Status Sensor: <span id="sensorStatus" class="status-badge" style="background: var(--red); color: white;">Offline</span></div>
+                        <div>Update terakhir: <span id="lastUpdate">Belum ada data</span></div>
                     </div>
                 </div>
             </div>
@@ -250,7 +251,16 @@
         const liveTemp = document.getElementById('liveTemp');
         const liveHum = document.getElementById('liveHum');
         const lastUpdate = document.getElementById('lastUpdate');
+        const sensorStatusBadge = document.getElementById('sensorStatus');
         const tableBody = document.getElementById('historyTableBody');
+        let sensorTimeout;
+
+        function setSensorOffline() {
+            sensorStatusBadge.textContent = "Offline";
+            sensorStatusBadge.style.background = "var(--red)";
+            liveTemp.textContent = "--";
+            liveHum.textContent = "--";
+        }
 
         // ==== BAGIAN KONTROL LAMPU ====
         socket.on('traffic_update', (status) => {
@@ -360,6 +370,14 @@
 
         // Listen Realtime Sensor Data dari AWS -> Node.js -> Socket.io
         socket.on('sensor_data', (data) => {
+            // Ubah status jadi Online karena kita baru menerima data
+            sensorStatusBadge.textContent = "Online";
+            sensorStatusBadge.style.background = "var(--green)";
+            
+            // Reset timer offline (15 detik)
+            clearTimeout(sensorTimeout);
+            sensorTimeout = setTimeout(setSensorOffline, 15000);
+
             // Update Dashboard Angka
             liveTemp.textContent = data.suhu.toFixed(1);
             liveHum.textContent = data.kelembapan.toFixed(1);
