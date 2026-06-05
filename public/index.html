@@ -212,7 +212,15 @@
 
             <!-- Kolom Kanan: Visualisasi Data -->
             <div class="card">
-                <h2>📈 Grafik Historis Sensor (20 Data Terakhir)</h2>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">📈 Grafik Historis Sensor</h2>
+                    <select id="timeFilter" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; outline: none; cursor: pointer;">
+                        <option value="last20">20 Data Terakhir (Live)</option>
+                        <option value="1h">1 Jam Terakhir</option>
+                        <option value="4h">4 Jam Terakhir</option>
+                        <option value="24h">24 Jam Terakhir</option>
+                    </select>
+                </div>
                 <canvas id="sensorChart" height="120"></canvas>
 
                 <div class="table-container">
@@ -330,7 +338,8 @@
         // Fetch History dari MongoDB via API Node.js
         async function fetchHistory() {
             try {
-                const res = await fetch('/api/sensor-history');
+                const filterValue = document.getElementById('timeFilter').value;
+                const res = await fetch(`/api/sensor-history?filter=${filterValue}`);
                 const data = await res.json();
                 
                 // Pisahkan untuk chart
@@ -359,25 +368,29 @@
             const timeStr = now.toLocaleTimeString('id-ID');
             lastUpdate.textContent = timeStr;
 
-            // Update Grafik (Geser data lama, masukkan baru)
-            sensorChart.data.labels.push(timeStr);
-            sensorChart.data.datasets[0].data.push(data.suhu);
-            sensorChart.data.datasets[1].data.push(data.kelembapan);
+            const filterValue = document.getElementById('timeFilter').value;
+            
+            // Jika dalam mode "Live", update grafik secara real-time
+            if (filterValue === 'last20') {
+                sensorChart.data.labels.push(timeStr);
+                sensorChart.data.datasets[0].data.push(data.suhu);
+                sensorChart.data.datasets[1].data.push(data.kelembapan);
 
-            // Batasi chart hanya 20 titik
-            if (sensorChart.data.labels.length > 20) {
-                sensorChart.data.labels.shift();
-                sensorChart.data.datasets[0].data.shift();
-                sensorChart.data.datasets[1].data.shift();
+                if (sensorChart.data.labels.length > 20) {
+                    sensorChart.data.labels.shift();
+                    sensorChart.data.datasets[0].data.shift();
+                    sensorChart.data.datasets[1].data.shift();
+                }
+                sensorChart.update();
+                
+                // Refresh tabel
+                fetchHistory();
             }
-            sensorChart.update();
-
-            // Refresh tabel (fetch ulang agar simpel)
-            fetchHistory();
         });
 
         // Saat halaman pertama dibuka, ambil riwayat
         window.addEventListener('load', fetchHistory);
+        document.getElementById('timeFilter').addEventListener('change', fetchHistory);
 
     </script>
 </body>

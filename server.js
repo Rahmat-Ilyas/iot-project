@@ -76,9 +76,23 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ENDPOINT UNTUK FRONTEND SPA KITA
 // ==========================================
 
-// Mengambil 20 data historis terakhir untuk Chart.js
+// Mengambil data historis dengan filter waktu
 app.get('/api/sensor-history', (req, res) => {
-  db.find({}).sort({ timestamp: -1 }).limit(20).exec((err, docs) => {
+  const filter = req.query.filter || 'last20';
+  let query = {};
+  let dataLimit = 20; // Default limit untuk 'last20'
+
+  if (filter !== 'last20') {
+    let hoursToSubtract = 0;
+    if (filter === '1h') { hoursToSubtract = 1; dataLimit = 150; } // Asumsi 150 titik cukup untuk 1 jam
+    else if (filter === '4h') { hoursToSubtract = 4; dataLimit = 200; }
+    else if (filter === '24h') { hoursToSubtract = 24; dataLimit = 300; }
+
+    const timeAgo = Date.now() - (hoursToSubtract * 60 * 60 * 1000);
+    query = { timestamp: { $gte: timeAgo } };
+  }
+
+  db.find(query).sort({ timestamp: -1 }).limit(dataLimit).exec((err, docs) => {
     if (err) {
       res.status(500).json({ error: "Gagal mengambil data riwayat sensor" });
     } else {
