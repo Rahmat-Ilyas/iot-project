@@ -132,7 +132,10 @@
         <p class="subtitle">Konfigurasi IP Broker untuk Backend Node.js</p>
 
         <label for="mqttIp">AWS MQTT IP Address</label>
-        <input type="text" id="mqttIp" placeholder="Loading...">
+        <input type="text" id="mqttIp" placeholder="Contoh: 18.140.159.90">
+
+        <label for="mqttPort">MQTT Port</label>
+        <input type="text" id="mqttPort" placeholder="Contoh: 1883" value="1883">
 
         <button onclick="saveSettings()" id="saveBtn">Save & Reconnect</button>
         <div id="status" class="status-msg"></div>
@@ -146,11 +149,15 @@
             .then(res => res.json())
             .then(data => {
                 document.getElementById('mqttIp').value = data.ip || '';
+                if (data.port) {
+                    document.getElementById('mqttPort').value = data.port;
+                }
             })
             .catch(err => console.error('Error fetching settings:', err));
 
         function saveSettings() {
             const ip = document.getElementById('mqttIp').value;
+            const port = document.getElementById('mqttPort').value || "1883";
             const btn = document.getElementById('saveBtn');
             const status = document.getElementById('status');
 
@@ -166,7 +173,7 @@
             fetch('/api/settings/mqtt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip })
+                body: JSON.stringify({ ip, port: parseInt(port) })
             })
             .then(res => res.json())
             .then(data => {

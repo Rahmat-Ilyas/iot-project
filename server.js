@@ -23,14 +23,14 @@ console.log('✅ Terhubung ke NeDB lokal (sensor, security, settings)');
 // ==========================================
 let mqttClient = null;
 
-function setupMQTT(ip) {
+function setupMQTT(ip, port = 1883) {
   if (mqttClient) {
     console.log(`🔌 Memutuskan koneksi MQTT lama...`);
     mqttClient.end(true); // Putus paksa
   }
 
-  console.log(`⏳ Menghubungkan ke MQTT Broker di ${ip}...`);
-  mqttClient = mqtt.connect(`mqtt://${ip}:1883`, {
+  console.log(`⏳ Menghubungkan ke MQTT Broker di ${ip}:${port}...`);
+  mqttClient = mqtt.connect(`mqtt://${ip}:${port}`, {
     clientId: 'NodeJS-BackendServer-' + Math.random().toString(16).substring(2, 8)
   });
 
@@ -88,13 +88,15 @@ function setupMQTT(ip) {
 }
 
 // Mulai sistem MQTT saat server nyala
-settingsDb.findOne({ key: 'mqtt_ip' }, (err, doc) => {
+settingsDb.findOne({ key: 'mqtt_config' }, (err, doc) => {
   if (doc && doc.value) {
-    setupMQTT(doc.value);
+    setupMQTT(doc.value.ip, doc.value.port);
   } else {
-    const defaultIp = "52.220.167.235";
-    settingsDb.insert({ key: 'mqtt_ip', value: defaultIp });
-    setupMQTT(defaultIp);
+    // Fallback if old key exists
+    settingsDb.findOne({ key: 'mqtt_ip' }, (err, oldDoc) => {
+      const ip = oldDoc ? oldDoc.value : "52.220.167.235";
+      setupMQTT(ip, 1883);
+    });
   }
 });
 
@@ -163,24 +165,27 @@ app.post('/api/traffic', (req, res) => {
 // ENDPOINT PENGATURAN MQTT DINAMIS
 // ==========================================
 app.get('/api/settings/mqtt', (req, res) => {
-  settingsDb.findOne({ key: 'mqtt_ip' }, (err, doc) => {
-    if (doc) {
-      res.json({ ip: doc.value });
+  settingsDb.findOne({ key: 'mqtt_config' }, (err, doc) => {
+    if (doc && doc.value) {
+      res.json({ ip: doc.value.ip, port: doc.value.port });
     } else {
-      res.json({ ip: "52.220.167.235" });
+      settingsDb.findOne({ key: 'mqtt_ip' }, (err, oldDoc) => {
+        res.json({ ip: oldDoc ? oldDoc.value : "52.220.167.235", port: 1883 });
+      });
     }
   });
 });
 
 app.post('/api/settings/mqtt', (req, res) => {
-  const { ip } = req.body;
+  const { ip, port } = req.body;
   if (!ip) return res.status(400).json({ error: "IP MQTT harus diisi" });
+  const mqttPort = port || 1883;
 
-  settingsDb.update({ key: 'mqtt_ip' }, { $set: { value: ip } }, { upsert: true }, (err) => {
+  settingsDb.update({ key: 'mqtt_config' }, { $set: { value: { ip, port: mqttPort } } }, { upsert: true }, (err) => {
     if (err) return res.status(500).json({ error: "Gagal menyimpan pengaturan" });
     
-    setupMQTT(ip);
-    res.json({ message: `IP MQTT berhasil diubah menjadi ${ip} dan sedang menghubungkan ulang...` });
+    setupMQTT(ip, mqttPort);
+    res.json({ message: `Pengaturan MQTT berhasil diubah menjadi ${ip}:${mqttPort} dan sedang menghubungkan ulang...` });
   });
 });
 
