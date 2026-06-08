@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Server Settings | IoT Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
+            color: #fff;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 40px;
+            width: 100%;
+            max-width: 450px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 {
+            margin-top: 0;
+            font-weight: 800;
+            color: #4ade80;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p.subtitle {
+            text-align: center;
+            color: #9ca3af;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #e5e7eb;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            font-size: 1rem;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #4ade80;
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
+            background: rgba(0, 0, 0, 0.4);
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
+            color: #000;
+            font-size: 1.1rem;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        .status-msg {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 0.9rem;
+            min-height: 20px;
+        }
+
+        .success { color: #4ade80; }
+        .error { color: #f87171; }
+        
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 25px;
+            color: #9ca3af;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .back-link:hover {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glass-panel">
+        <h2>Server MQTT Settings</h2>
+        <p class="subtitle">Konfigurasi IP Broker untuk Backend Node.js</p>
+
+        <label for="mqttIp">AWS MQTT IP Address</label>
+        <input type="text" id="mqttIp" placeholder="Loading...">
+
+        <button onclick="saveSettings()" id="saveBtn">Save & Reconnect</button>
+        <div id="status" class="status-msg"></div>
+        
+        <a href="/" class="back-link">← Kembali ke Dashboard Utama</a>
+    </div>
+
+    <script>
+        // Mengambil pengaturan saat ini
+        fetch('/api/settings/mqtt')
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('mqttIp').value = data.ip || '';
+            })
+            .catch(err => console.error('Error fetching settings:', err));
+
+        function saveSettings() {
+            const ip = document.getElementById('mqttIp').value;
+            const btn = document.getElementById('saveBtn');
+            const status = document.getElementById('status');
+
+            if(!ip) {
+                status.textContent = "IP tidak boleh kosong!";
+                status.className = "status-msg error";
+                return;
+            }
+
+            btn.textContent = "Menyimpan...";
+            btn.disabled = true;
+
+            fetch('/api/settings/mqtt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ip })
+            })
+            .then(res => res.json())
+            .then(data => {
+                status.textContent = data.message || "Berhasil disimpan!";
+                status.className = "status-msg success";
+            })
+            .catch(err => {
+                status.textContent = "Gagal menyimpan pengaturan!";
+                status.className = "status-msg error";
+            })
+            .finally(() => {
+                btn.textContent = "Save & Reconnect";
+                btn.disabled = false;
+            });
+        }
+    </script>
+</body>
+</html>
