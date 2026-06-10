@@ -109,29 +109,65 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ENDPOINT UNTUK FRONTEND SPA KITA
 // ==========================================
 
-// Mengambil data historis dengan filter waktu
+// Mengambil data historis dengan filter waktu dan merata-ratakan data sesuai rentang waktu
 app.get('/api/sensor-history', (req, res) => {
   const filter = req.query.filter || 'last20';
-  let query = {};
-  let dataLimit = 20; // Default limit untuk 'last20'
 
-  if (filter !== 'last20') {
-    let hoursToSubtract = 0;
-    if (filter === '1h') { hoursToSubtract = 1; dataLimit = 150; } // Asumsi 150 titik cukup untuk 1 jam
-    else if (filter === '4h') { hoursToSubtract = 4; dataLimit = 200; }
-    else if (filter === '24h') { hoursToSubtract = 24; dataLimit = 300; }
-
-    const timeAgo = Date.now() - (hoursToSubtract * 60 * 60 * 1000);
-    query = { timestamp: { $gte: timeAgo } };
+  if (filter === 'last20') {
+    db.find({}).sort({ timestamp: -1 }).limit(20).exec((err, docs) => {
+      if (err) return res.status(500).json({ error: "Gagal mengambil data" });
+      return res.json(docs.reverse());
+    });
+    return;
   }
 
-  db.find(query).sort({ timestamp: -1 }).limit(dataLimit).exec((err, docs) => {
-    if (err) {
-      res.status(500).json({ error: "Gagal mengambil data riwayat sensor" });
-    } else {
-      // Kita balik arraynya agar data terlama di kiri dan terbaru di kanan grafik
-      res.json(docs.reverse());
-    }
+  let hoursToSubtract = 0;
+  let intervalMs = 1;
+
+  if (filter === '1h') { 
+    hoursToSubtract = 1; 
+    intervalMs = 60 * 1000; // rata-rata per 1 menit
+  } 
+  else if (filter === '4h') { 
+    hoursToSubtract = 4; 
+    intervalMs = 5 * 60 * 1000; // rata-rata per 5 menit
+  } 
+  else if (filter === '24h') { 
+    hoursToSubtract = 24; 
+    intervalMs = 30 * 60 * 1000; // rata-rata per 30 menit
+  }
+
+  const timeAgo = Date.now() - (hoursToSubtract * 60 * 60 * 1000);
+  const query = { timestamp: { $gte: timeAgo } };
+
+  // Ambil semua data dalam rentang waktu tersebut lalu kelompokkan di server
+  db.find(query).sort({ timestamp: 1 }).exec((err, docs) => {
+    if (err) return res.status(500).json({ error: "Gagal mengambil data" });
+
+    if (docs.length === 0) return res.json([]);
+
+    const grouped = {};
+    docs.forEach(doc => {
+      // Bulatkan ke interval waktu terdekat
+      const timeBucket = Math.floor(doc.timestamp / intervalMs) * intervalMs;
+      if (!grouped[timeBucket]) {
+        grouped[timeBucket] = { count: 0, sumSuhu: 0, sumHum: 0 };
+      }
+      grouped[timeBucket].count += 1;
+      grouped[timeBucket].sumSuhu += doc.suhu;
+      grouped[timeBucket].sumHum += doc.kelembapan;
+    });
+
+    const result = Object.keys(grouped).map(bucket => {
+      const g = grouped[bucket];
+      return {
+        timestamp: parseInt(bucket),
+        suhu: parseFloat((g.sumSuhu / g.count).toFixed(2)),
+        kelembapan: parseFloat((g.sumHum / g.count).toFixed(2))
+      };
+    }).sort((a, b) => a.timestamp - b.timestamp);
+
+    res.json(result);
   });
 });
 

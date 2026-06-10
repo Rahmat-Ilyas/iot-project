@@ -365,10 +365,19 @@
             // Data array biasanya dari terlama ke terbaru (untuk chart),
             // tapi untuk tabel kita ingin yang terbaru di atas, jadi kita reverse copy-nya
             const reversedForTable = [...dataArray].reverse();
+            const filterValue = document.getElementById('timeFilter').value;
             
             reversedForTable.forEach(row => {
                 const tr = document.createElement('tr');
-                const timeStr = new Date(row.timestamp || Date.now()).toLocaleTimeString('id-ID');
+                const dt = new Date(row.timestamp || Date.now());
+                let timeStr;
+                if (filterValue === '24h') {
+                    timeStr = dt.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                } else if (filterValue === 'last20') {
+                    timeStr = dt.toLocaleTimeString('id-ID'); // dengan detik
+                } else {
+                    timeStr = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); // tanpa detik
+                }
                 tr.innerHTML = `
                     <td>${timeStr}</td>
                     <td style="color:#ef4444;">${row.suhu} °C</td>
@@ -386,7 +395,13 @@
                 const data = await res.json();
                 
                 // Pisahkan untuk chart
-                const labels = data.map(d => new Date(d.timestamp).toLocaleTimeString('id-ID'));
+                const labels = data.map(d => {
+                    const dt = new Date(d.timestamp);
+                    if (filterValue === '24h') {
+                        return dt.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    }
+                    return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                });
                 const temps = data.map(d => d.suhu);
                 const hums = data.map(d => d.kelembapan);
 
