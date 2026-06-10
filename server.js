@@ -9,6 +9,13 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 
+// Simpan status terakhir agar klien yang baru memuat ulang halaman bisa langsung sinkron
+let currentTrafficStatus = 'Menunggu...';
+
+io.on('connection', (socket) => {
+  socket.emit('traffic_update', currentTrafficStatus);
+});
+
 // ==========================================
 // INISIALISASI NEDB (Database Lokal)
 // ==========================================
@@ -45,6 +52,7 @@ function setupMQTT(ip, port = 1883) {
     if (topic === 'traffic_light/status') {
       try {
         const data = JSON.parse(message.toString());
+        currentTrafficStatus = data.status;
         io.emit('traffic_update', data.status);
       } catch (e) {
         console.error("Gagal memparsing JSON dari MQTT status");
