@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Relay Control Center</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-decor">
+        <div class="circle circle-1"></div>
+        <div class="circle circle-2"></div>
+    </div>
+    
+    <div class="container">
+        <header>
+            <div class="logo">
+                <a href="/" style="text-decoration: none; color: inherit;">🌐 IoT Portal</a> / Relay
+            </div>
+            <div id="connection-badge" class="badge disconnected">Mencoba Terhubung...</div>
+        </header>
+
+        <main class="grid-center">
+            <!-- Relay Card -->
+            <section class="card glass" id="relay-card">
+                <div class="card-header">
+                    <h2>🔌 Modul Relay Internet</h2>
+                    <span id="relay-state" class="status-indicator off">OFF</span>
+                </div>
+                <div class="card-content">
+                    <p class="description">Aktifkan atau matikan perangkat listrik Anda secara real-time dari mana saja di seluruh dunia.</p>
+                    <div class="control-box">
+                        <button id="btn-relay-toggle" class="btn btn-primary btn-relay">Nyalakan Relay</button>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <footer>
+            <p>IoT Relay Hub &copy; 2026 • Terhubung melalui MQTT & Socket.io</p>
+        </footer>
+    </div>
+
+    <!-- Gunakan socket.io bawaan server-iot -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

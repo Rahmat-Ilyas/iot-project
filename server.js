@@ -11,9 +11,20 @@ const io = new Server(server, { cors: { origin: '*' } });
 
 // Simpan status terakhir agar klien yang baru memuat ulang halaman bisa langsung sinkron
 let currentTrafficStatus = 'Menunggu...';
+let currentRelayStatus = 'OFF';
 
 io.on('connection', (socket) => {
   socket.emit('traffic_update', currentTrafficStatus);
+  socket.emit('relay_update', currentRelayStatus);
+
+  // Hubungkan kendali relay dari client via Socket.io
+  socket.on('control_relay', (state) => {
+    const cmd = state.toLowerCase(); // 'on' atau 'off'
+    if (mqttClient && mqttClient.connected) {
+      mqttClient.publish('relay/command', cmd);
+      console.log(`[Socket.io] Publish command to relay: ${cmd}`);
+    }
+  });
 });
 
 // ==========================================
@@ -46,12 +57,15 @@ function setupMQTT(ip, port = 1883) {
     mqttClient.subscribe('traffic_light/status');
     mqttClient.subscribe('traffic_light/sensor');
     mqttClient.subscribe('traffic_light/security');
+    mqttClient.subscribe('relay/status');
+    mqttClient.subscribe('relay/command');
   });
 
   mqttClient.on('message', (topic, message) => {
+    const msgStr = message.toString();
     if (topic === 'traffic_light/status') {
       try {
-        const data = JSON.parse(message.toString());
+        const data = JSON.parse(msgStr);
         currentTrafficStatus = data.status;
         io.emit('traffic_update', data.status);
       } catch (e) {
@@ -59,7 +73,7 @@ function setupMQTT(ip, port = 1883) {
       }
     } else if (topic === 'traffic_light/sensor') {
       try {
-        const data = JSON.parse(message.toString());
+        const data = JSON.parse(msgStr);
         
         const newSensorData = {
           suhu: data.suhu,
@@ -78,7 +92,7 @@ function setupMQTT(ip, port = 1883) {
       }
     } else if (topic === 'traffic_light/security') {
       try {
-        const data = JSON.parse(message.toString());
+        const data = JSON.parse(msgStr);
         if (data.motion) {
           const securityLog = { event: 'Motion Detected', timestamp: Date.now() };
           securityDb.insert(securityLog, (err, newDoc) => {
@@ -91,6 +105,15 @@ function setupMQTT(ip, port = 1883) {
       } catch (e) {
         console.error("Gagal memparsing JSON dari MQTT security.");
       }
+    } else if (topic === 'relay/status') {
+      try {
+        const data = JSON.parse(msgStr);
+        currentRelayStatus = data.status.toUpperCase();
+      } catch (e) {
+        currentRelayStatus = msgStr.toUpperCase();
+      }
+      io.emit('relay_update', currentRelayStatus);
+      console.log(`[MQTT] Status Relay diperbarui: ${currentRelayStatus}`);
     }
   });
 }
@@ -231,6 +254,21 @@ app.post('/api/settings/mqtt', (req, res) => {
     setupMQTT(ip, mqttPort);
     res.json({ message: `Pengaturan MQTT berhasil diubah menjadi ${ip}:${mqttPort} dan sedang menghubungkan ulang...` });
   });
+});
+
+// Endpoint REST API untuk Relay
+app.post('/api/relay', (req, res) => {
+  const { command } = req.body;
+  if (command === 'on' || command === 'off') {
+    if (mqttClient && mqttClient.connected) {
+      mqttClient.publish('relay/command', command);
+      res.json({ success: true, message: `Command ${command} dikirim ke relay` });
+    } else {
+      res.status(503).json({ success: false, message: 'Server belum terhubung ke MQTT Broker' });
+    }
+  } else {
+    res.status(400).json({ success: false, message: 'Command tidak valid. Gunakan "on" atau "off"' });
+  }
 });
 
 // Endpoint lama (Sensor Cahaya/Banjir) dibiarkan agar tidak rusak

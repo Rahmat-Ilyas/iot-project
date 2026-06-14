@@ -1,3 +1,6 @@
 node_modules/
 sensor_data.db
+security_data.db
+settings_data.db
 .env
+

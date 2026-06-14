@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AWS IoT Dashboard & Kontrol Lalu Lintas</title>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+            --muted: #94a3b8;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --green: #22c55e;
+            --blue: #3b82f6;
+            --border: rgba(148, 163, 184, 0.15);
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            min-height: 100vh;
+            font-family: 'Inter', system-ui, sans-serif;
+            background: #0f172a;
+            color: var(--text);
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 5px;
+            text-align: center;
+        }
+        
+        p.subtitle {
+            text-align: center;
+            color: var(--muted);
+            margin-bottom: 30px;
+        }
+
+        /* Grid Layout Utama */
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+        }
+
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: 1fr 2fr;
+            }
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .card h2 {
+            margin-top: 0;
+            font-size: 1.25rem;
+            margin-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+
+        /* Kontrol Lampu */
+        .light-panel {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+        }
+
+        .light-button {
+            border: none;
+            border-radius: 12px;
+            padding: 20px 0;
+            font-size: 1rem;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .light-button.red { background: var(--red); }
+        .light-button.yellow { background: var(--yellow); color: #000; }
+        .light-button.green { background: var(--green); color: #000; }
+        .light-button.off { background: #475569; }
+
+        .light-button.active {
+            transform: scale(0.95);
+            box-shadow: 0 0 15px rgba(255,255,255,0.4) inset;
+            border: 2px solid white;
+        }
+
+        /* Dashboard Sensor */
+        .sensor-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .stat-box {
+            background: #0f172a;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .stat-box.temp { border-top: 4px solid var(--red); }
+        .stat-box.hum { border-top: 4px solid var(--blue); }
+
+        .stat-box h3 { margin: 0; color: var(--muted); font-size: 0.9rem; }
+        .stat-box .value { font-size: 2.5rem; font-weight: bold; margin: 10px 0; }
+        .stat-box .unit { font-size: 1rem; color: var(--muted); }
+
+        /* Tabel Riwayat */
+        .table-container {
+            margin-top: 20px;
+            max-height: 250px;
+            overflow-y: auto;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 12px 16px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: #0f172a;
+            position: sticky;
+            top: 0;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            background: #334155;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.8; transform: scale(1.05); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+            <h1 style="margin-bottom: 0; text-align: left;">🚀 AWS IoT Enterprise Dashboard</h1>
+            <a href="settings.html" style="background: var(--blue); color: white; padding: 10px 20px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 0.9rem; transition: background 0.3s;">⚙️ Server Settings</a>
+        </div>
+        <p class="subtitle" style="text-align: left;">Kontrol Lalu Lintas & Monitoring Sensor Lingkungan secara Real-Time via MQTT</p>
+
+        <div class="grid">
+            <!-- Kolom Kiri: Kontrol & Status -->
+            <div>
+                <div class="card" style="margin-bottom: 20px;">
+                    <h2>🚦 Kontrol Jarak Jauh</h2>
+                    <div class="light-panel">
+                        <button class="light-button red" data-color="merah">Merah</button>
+                        <button class="light-button yellow" data-color="kuning">Kuning</button>
+                        <button class="light-button green" data-color="hijau">Hijau</button>
+                        <button class="light-button off" data-color="off">Mati</button>
+                    </div>
+                    <div style="margin-top: 20px; text-align: center;">
+                        Status MQTT: <span class="status-badge" id="realtimeStatus">Menunggu...</span>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h2>🌡️ Live Sensor (DHT)</h2>
+                    <div class="sensor-stats">
+                        <div class="stat-box temp">
+                            <h3>SUHU</h3>
+                            <div class="value" id="liveTemp">--</div>
+                            <div class="unit">°C</div>
+                        </div>
+                        <div class="stat-box hum">
+                            <h3>KELEMBAPAN</h3>
+                            <div class="value" id="liveHum">--</div>
+                            <div class="unit">%</div>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #94a3b8; margin-top: 15px;">
+                        <div>Status Sensor: <span id="sensorStatus" class="status-badge" style="background: var(--red); color: white;">Offline</span></div>
+                        <div>Update terakhir: <span id="lastUpdate">Belum ada data</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kolom Kanan: Visualisasi Data -->
+            <div class="card">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                    <h2 style="margin: 0; border: none; padding: 0;">📈 Grafik Historis Sensor</h2>
+                    <select id="timeFilter" style="background: var(--bg); color: var(--text); border: 1px solid var(--border); padding: 8px 12px; border-radius: 8px; outline: none; cursor: pointer;">
+                        <option value="last20">20 Data Terakhir (Live)</option>
+                        <option value="1h">1 Jam Terakhir</option>
+                        <option value="4h">4 Jam Terakhir</option>
+                        <option value="24h">24 Jam Terakhir</option>
+                    </select>
+                </div>
+                <canvas id="sensorChart" height="120"></canvas>
+
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Waktu</th>
+                                <th>Suhu (°C)</th>
+                                <th>Kelembapan (%)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody">
+                            <tr><td colspan="3" style="text-align:center;">Memuat data dari MongoDB...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel Security -->
+        <div class="card" style="margin-top: 20px; border-top: 4px solid var(--yellow);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid var(--border); padding-bottom: 10px;">
+                <h2 style="margin: 0; border: none; padding: 0;">🚨 Log Keamanan (Motion Detection)</h2>
+                <div id="securityAlert" style="display: none; background: var(--red); color: white; padding: 5px 15px; border-radius: 20px; font-weight: bold; animation: pulse 1s infinite;">
+                    PENYUSUP TERDETEKSI!
+                </div>
+            </div>
+            <div class="table-container" style="max-height: 200px;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Waktu Kejadian</th>
+                            <th>Detail Event</th>
+                        </tr>
+                    </thead>
+                    <tbody id="securityTableBody">
+                        <tr><td colspan="2" style="text-align:center;">Memuat data keamanan...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Socket.IO -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+        const statusBoxText = document.getElementById('realtimeStatus');
+        const lightButtons = document.querySelectorAll('.light-button');
+        const liveTemp = document.getElementById('liveTemp');
+        const liveHum = document.getElementById('liveHum');
+        const lastUpdate = document.getElementById('lastUpdate');
+        const sensorStatusBadge = document.getElementById('sensorStatus');
+        const tableBody = document.getElementById('historyTableBody');
+        let sensorTimeout;
+
+        function setSensorOffline() {
+            sensorStatusBadge.textContent = "Offline";
+            sensorStatusBadge.style.background = "var(--red)";
+            liveTemp.textContent = "--";
+            liveHum.textContent = "--";
+        }
+
+        // ==== BAGIAN KONTROL LAMPU ====
+        socket.on('traffic_update', (status) => {
+            statusBoxText.textContent = status;
+            lightButtons.forEach((button) => {
+                button.classList.toggle('active', button.dataset.color.toUpperCase() === status);
+            });
+        });
+
+        async function sendColor(color) {
+            statusBoxText.textContent = "Mengirim...";
+            try {
+                await fetch('/api/traffic', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: color }),
+                });
+            } catch (error) {
+                statusBoxText.textContent = "Error Jaringan";
+            }
+        }
+
+        lightButtons.forEach((button) => {
+            button.addEventListener('click', () => sendColor(button.dataset.color));
+        });
+
+        // ==== BAGIAN GRAFIK SENSOR (Chart.js) ====
+        const ctx = document.getElementById('sensorChart').getContext('2d');
+        const sensorChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Label waktu
+                datasets: [
+                    {
+                        label: 'Suhu (°C)',
+                        data: [],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Kelembapan (%)',
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 2,
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { labels: { color: '#f8fafc' } }
+                },
+                scales: {
+                    x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                    y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+                }
+            }
+        });
+
+        // Render tabel html
+        function renderTable(dataArray) {
+            tableBody.innerHTML = '';
+            // Data array biasanya dari terlama ke terbaru (untuk chart),
+            // tapi untuk tabel kita ingin yang terbaru di atas, jadi kita reverse copy-nya
+            const reversedForTable = [...dataArray].reverse();
+            const filterValue = document.getElementById('timeFilter').value;
+            
+            reversedForTable.forEach(row => {
+                const tr = document.createElement('tr');
+                const dt = new Date(row.timestamp || Date.now());
+                let timeStr;
+                if (filterValue === '24h') {
+                    timeStr = dt.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                } else if (filterValue === 'last20') {
+                    timeStr = dt.toLocaleTimeString('id-ID'); // dengan detik
+                } else {
+                    timeStr = dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }); // tanpa detik
+                }
+                tr.innerHTML = `
+                    <td>${timeStr}</td>
+                    <td style="color:#ef4444;">${row.suhu} °C</td>
+                    <td style="color:#3b82f6;">${row.kelembapan} %</td>
+                `;
+                tableBody.appendChild(tr);
+            });
+        }
+
+        // Fetch History dari MongoDB via API Node.js
+        async function fetchHistory() {
+            try {
+                const filterValue = document.getElementById('timeFilter').value;
+                const res = await fetch(`/api/sensor-history?filter=${filterValue}`);
+                const data = await res.json();
+                
+                // Pisahkan untuk chart
+                const labels = data.map(d => {
+                    const dt = new Date(d.timestamp);
+                    if (filterValue === '24h') {
+                        return dt.toLocaleString('id-ID', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+                    }
+                    return dt.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+                });
+                const temps = data.map(d => d.suhu);
+                const hums = data.map(d => d.kelembapan);
+
+                sensorChart.data.labels = labels;
+                sensorChart.data.datasets[0].data = temps;
+                sensorChart.data.datasets[1].data = hums;
+                sensorChart.update();
+
+                renderTable(data);
+            } catch (err) {
+                console.error("Gagal mengambil riwayat", err);
+            }
+        }
+
+        // Listen Realtime Sensor Data dari AWS -> Node.js -> Socket.io
+        socket.on('sensor_data', (data) => {
+            // Ubah status jadi Online karena kita baru menerima data
+            sensorStatusBadge.textContent = "Online";
+            sensorStatusBadge.style.background = "var(--green)";
+            
+            // Reset timer offline (15 detik)
+            clearTimeout(sensorTimeout);
+            sensorTimeout = setTimeout(setSensorOffline, 15000);
+
+            // Update Dashboard Angka
+            liveTemp.textContent = data.suhu.toFixed(1);
+            liveHum.textContent = data.kelembapan.toFixed(1);
+            
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('id-ID');
+            lastUpdate.textContent = timeStr;
+
+            const filterValue = document.getElementById('timeFilter').value;
+            
+            // Jika dalam mode "Live", update grafik secara real-time
+            if (filterValue === 'last20') {
+                sensorChart.data.labels.push(timeStr);
+                sensorChart.data.datasets[0].data.push(data.suhu);
+                sensorChart.data.datasets[1].data.push(data.kelembapan);
+
+                if (sensorChart.data.labels.length > 20) {
+                    sensorChart.data.labels.shift();
+                    sensorChart.data.datasets[0].data.shift();
+                    sensorChart.data.datasets[1].data.shift();
+                }
+                sensorChart.update();
+                
+                // Refresh tabel
+                fetchHistory();
+            }
+        });
+
+        // ==== BAGIAN KEAMANAN (PIR SENSOR) ====
+        const securityTableBody = document.getElementById('securityTableBody');
+        const securityAlert = document.getElementById('securityAlert');
+
+        function renderSecurityTable(dataArray) {
+            securityTableBody.innerHTML = '';
+            if (dataArray.length === 0) {
+                securityTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;">Belum ada catatan keamanan.</td></tr>';
+                return;
+            }
+            dataArray.forEach(row => {
+                const tr = document.createElement('tr');
+                const timeStr = new Date(row.timestamp).toLocaleString('id-ID');
+                tr.innerHTML = `
+                    <td>${timeStr}</td>
+                    <td style="color:var(--yellow); font-weight:bold;">${row.event}</td>
+                `;
+                securityTableBody.appendChild(tr);
+            });
+        }
+
+        async function fetchSecurityHistory() {
+            try {
+                const res = await fetch('/api/security-history');
+                const data = await res.json();
+                renderSecurityTable(data);
+            } catch (err) {
+                console.error("Gagal mengambil riwayat keamanan", err);
+            }
+        }
+
+        socket.on('security_alert', (data) => {
+            // Tampilkan alert berkedip selama 5 detik
+            securityAlert.style.display = 'block';
+            setTimeout(() => {
+                securityAlert.style.display = 'none';
+            }, 5000);
+            
+            // Refresh tabel log keamanan
+            fetchSecurityHistory();
+        });
+
+        // Saat halaman pertama dibuka, ambil riwayat
+        window.addEventListener('load', () => {
+            fetchHistory();
+            fetchSecurityHistory();
+        });
+        document.getElementById('timeFilter').addEventListener('change', fetchHistory);
+
+    </script>
+</body>
+
+</html>
