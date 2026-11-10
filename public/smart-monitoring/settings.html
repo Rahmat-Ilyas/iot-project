@@ -6,16 +6,34 @@
     <title>Server Settings | IoT Dashboard</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
-        
+
+        :root {
+            --accent-color: #4ade80;
+            --focus-color: #ff8c00;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #1e1e2f 0%, #2a2a40 100%);
             color: #fff;
             margin: 0;
+            min-height: 100vh;
+            padding: 32px 16px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            height: 100vh;
+            align-items: flex-start;
+        }
+
+        .settings-wrapper {
+            width: 100%;
+            max-width: 580px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
         }
 
         .glass-panel {
@@ -24,15 +42,14 @@
             -webkit-backdrop-filter: blur(15px);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 20px;
-            padding: 40px;
+            padding: 32px;
             width: 100%;
-            max-width: 450px;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.4s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(15px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
@@ -41,154 +58,546 @@
             font-weight: 800;
             color: #4ade80;
             text-align: center;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
+            font-size: 1.4rem;
         }
 
         p.subtitle {
             text-align: center;
             color: #9ca3af;
             font-size: 0.9rem;
-            margin-bottom: 30px;
+            margin-top: 0;
+            margin-bottom: 24px;
         }
 
-        label {
-            display: block;
-            margin-bottom: 8px;
+        .field {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.35rem;
+            margin-block-end: 1.25rem;
+        }
+
+        .field label {
             font-weight: 600;
             color: #e5e7eb;
+            font-size: 0.92rem;
         }
 
-        input[type="text"] {
+        .hint {
+            color: #9ca3af;
+            font-size: 0.8rem;
+            line-height: 1.4;
+        }
+
+        input[type="text"],
+        select {
             width: 100%;
+            font: inherit;
+            font-size: max(1rem, 1em);
+            min-height: 48px;
             padding: 12px 15px;
             border-radius: 10px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(0, 0, 0, 0.25);
             color: #fff;
-            font-size: 1rem;
-            box-sizing: border-box;
-            transition: all 0.3s ease;
-            margin-bottom: 20px;
+            transition: all 0.25s ease;
         }
 
-        input[type="text"]:focus {
-            outline: none;
+        select option {
+            background: #1e1e2f;
+            color: #fff;
+        }
+
+        input:focus-visible,
+        select:focus-visible,
+        button:focus-visible,
+        a:focus-visible {
+            outline: 3px solid var(--focus-color, #ff8c00);
+            outline-offset: 2px;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
             border-color: #4ade80;
-            box-shadow: 0 0 10px rgba(74, 222, 128, 0.3);
             background: rgba(0, 0, 0, 0.4);
         }
 
-        button {
+        input:user-invalid {
+            border-color: #f87171;
+        }
+
+        fieldset {
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            border-radius: 14px;
+            padding: 16px 18px;
+            margin: 0 0 20px 0;
+            background: rgba(0, 0, 0, 0.18);
+        }
+
+        legend {
+            font-weight: 700;
+            font-size: 0.92rem;
+            color: #cbd5e1;
+            padding: 0 8px;
+        }
+
+        .toggle-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 10px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .toggle-row:last-child {
+            border-bottom: none;
+        }
+
+        .toggle-row.master-toggle {
+            background: rgba(74, 222, 128, 0.08);
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 16px;
+        }
+
+        input[type="checkbox"][switch] {
+            accent-color: var(--accent-color, #4ade80);
+            margin: 3px 0 0 0;
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        input[type="checkbox"][switch]:focus-visible {
+            outline: 3px solid var(--focus-color, #ff8c00);
+            outline-offset: 4px;
+        }
+
+        .toggle-label {
+            cursor: pointer;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .toggle-label strong {
+            font-size: 0.95rem;
+            color: #f8fafc;
+        }
+
+        .toggle-label span {
+            font-size: 0.82rem;
+            color: #9ca3af;
+            line-height: 1.35;
+        }
+
+        button[type="submit"] {
             width: 100%;
+            min-height: 48px;
             padding: 14px;
             border: none;
             border-radius: 10px;
             background: linear-gradient(135deg, #4ade80 0%, #22c55e 100%);
             color: #000;
-            font-size: 1.1rem;
+            font-size: 1.05rem;
             font-weight: 800;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             box-shadow: 0 4px 15px rgba(74, 222, 128, 0.3);
         }
 
-        button:hover {
+        button[type="submit"]:hover {
             transform: translateY(-2px);
             box-shadow: 0 6px 20px rgba(74, 222, 128, 0.4);
         }
 
-        button:active {
-            transform: translateY(1px);
+        button[type="submit"]:disabled,
+        .btn-action:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .quick-actions {
+            margin-top: 20px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.12);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .quick-actions-title {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 2px;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn-action {
+            min-height: 48px;
+            padding: 10px 14px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.08);
+            color: #f8fafc;
+            font-family: inherit;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-action:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.35);
+        }
+
+        .btn-action.danger {
+            grid-column: 1 / -1;
+            border-color: rgba(248, 113, 113, 0.35);
+            color: #fca5a5;
+            background: rgba(239, 68, 68, 0.1);
+        }
+
+        .btn-action.danger:hover {
+            background: rgba(239, 68, 68, 0.2);
         }
 
         .status-msg {
-            margin-top: 20px;
+            margin-top: 16px;
             text-align: center;
             font-size: 0.9rem;
-            min-height: 20px;
+            min-height: 22px;
+            line-height: 1.4;
         }
 
         .success { color: #4ade80; }
         .error { color: #f87171; }
-        
+
         .back-link {
-            display: block;
+            display: inline-block;
+            width: 100%;
             text-align: center;
-            margin-top: 25px;
-            color: #9ca3af;
+            padding: 12px 0;
+            color: #cbd5e1;
             text-decoration: none;
-            font-size: 0.9rem;
-            transition: color 0.3s;
+            font-size: 0.95rem;
+            font-weight: 600;
+            transition: color 0.2s;
         }
+
         .back-link:hover {
-            color: #fff;
+            color: #4ade80;
         }
     </style>
 </head>
 <body>
 
-    <div class="glass-panel">
-        <h2>Server MQTT Settings</h2>
-        <p class="subtitle">Konfigurasi IP Broker untuk Backend Node.js</p>
+    <div class="settings-wrapper">
+        <!-- Panel 1: Simulator Data Dummy -->
+        <section class="glass-panel">
+            <h2 id="dummyHeading">🧪 Simulator Data Dummy</h2>
+            <p class="subtitle">Aktifkan data simulasi realistis saat perangkat ESP32 sedang dilepas atau untuk keperluan demo</p>
 
-        <label for="mqttIp">AWS MQTT IP Address</label>
-        <input type="text" id="mqttIp" placeholder="Contoh: 18.140.159.90">
+            <form id="dummyForm" action="/api/settings/dummy" method="POST" aria-labelledby="dummyHeading">
+                <div class="toggle-row master-toggle">
+                    <input type="checkbox" switch id="dummyEnabled" name="enabled">
+                    <label for="dummyEnabled" class="toggle-label">
+                        <strong>Aktifkan Mode Data Dummy</strong>
+                        <span>Menjalankan generator data otomatis di backend server-iot secara real-time</span>
+                    </label>
+                </div>
 
-        <label for="mqttPort">MQTT Port</label>
-        <input type="text" id="mqttPort" placeholder="Contoh: 1883" value="1883">
+                <fieldset>
+                    <legend>Komponen yang Disimulasikan</legend>
 
-        <button onclick="saveSettings()" id="saveBtn">Save & Reconnect</button>
-        <div id="status" class="status-msg"></div>
-        
-        <a href="/" class="back-link">← Kembali ke Dashboard Utama</a>
+                    <div class="toggle-row">
+                        <input type="checkbox" switch id="dhtEnabled" name="dhtEnabled" checked>
+                        <label for="dhtEnabled" class="toggle-label">
+                            <strong>🌡️ Sensor Suhu &amp; Kelembapan (DHT11/DHT22)</strong>
+                            <span>Mengirim fluktuasi suhu (24°C–32°C) &amp; kelembapan (55%–88%) alami ke grafik dan kartu live</span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <input type="checkbox" switch id="trafficMock" name="trafficMock" checked>
+                        <label for="trafficMock" class="toggle-label">
+                            <strong>🚦 Simulasi Respons Lampu Lalu Lintas</strong>
+                            <span>Tombol Merah, Kuning, Hijau, dan Mati di dashboard langsung merespons walau ESP32 offline</span>
+                        </label>
+                    </div>
+
+                    <div class="toggle-row">
+                        <input type="checkbox" switch id="pirEnabled" name="pirEnabled">
+                        <label for="pirEnabled" class="toggle-label">
+                            <strong>🚨 Sensor Gerak Keamanan (PIR Otomatis)</strong>
+                            <span>Memicu simulasi peringatan gerakan ("PENYUSUP TERDETEKSI!") otomatis setiap 35 detik</span>
+                        </label>
+                    </div>
+                </fieldset>
+
+                <div class="field">
+                    <label for="intervalSec">Interval Pengiriman Suhu &amp; Kelembapan</label>
+                    <select id="intervalSec" name="intervalSec" aria-describedby="intervalHelp">
+                        <option value="3">Setiap 3 Detik (Cepat / Demo Live)</option>
+                        <option value="5" selected>Setiap 5 Detik (Rekomendasi)</option>
+                        <option value="10">Setiap 10 Detik (Sesuai Interval ESP32 Asli)</option>
+                        <option value="30">Setiap 30 Detik (Santai)</option>
+                    </select>
+                    <span id="intervalHelp" class="hint">Mengatur seberapa sering titik data suhu baru dikirim ke grafik real-time.</span>
+                </div>
+
+                <button type="submit" id="saveDummyBtn">Simpan Pengaturan Dummy</button>
+                <div id="dummyStatus" class="status-msg" role="status" aria-live="polite"></div>
+            </form>
+
+            <div class="quick-actions">
+                <div class="quick-actions-title">⚡ Aksi Cepat Data Dummy (Tanpa Menunggu Interval)</div>
+                <div class="action-grid">
+                    <button type="button" class="btn-action" id="seedHistoryBtn">📈 Isi Riwayat 24 Jam</button>
+                    <button type="button" class="btn-action" id="triggerPirBtn">🚨 Tes Trigger Gerak PIR</button>
+                    <button type="button" class="btn-action danger" id="clearDummyBtn">🗑️ Hapus Semua Data Dummy dari Database</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Panel 2: Pengaturan Broker MQTT -->
+        <section class="glass-panel">
+            <h2 id="mqttHeading">⚙️ Server MQTT Settings</h2>
+            <p class="subtitle">Konfigurasi IP Broker untuk Backend Node.js</p>
+
+            <form id="mqttForm" action="/api/settings/mqtt" method="POST" aria-labelledby="mqttHeading">
+                <div class="field">
+                    <label for="mqttIp">AWS MQTT IP Address <span aria-hidden="true">*</span></label>
+                    <input
+                        type="text"
+                        id="mqttIp"
+                        name="ip"
+                        required
+                        autocorrect="off"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        enterkeyhint="next"
+                        aria-describedby="mqttIpHelp"
+                        placeholder="Contoh: 52.77.180.252">
+                    <span id="mqttIpHelp" class="hint">Masukkan alamat IP atau hostname MQTT Broker yang aktif.</span>
+                </div>
+
+                <div class="field">
+                    <label for="mqttPort">MQTT Port <span aria-hidden="true">*</span></label>
+                    <input
+                        type="text"
+                        id="mqttPort"
+                        name="port"
+                        inputmode="numeric"
+                        pattern="\d+"
+                        required
+                        enterkeyhint="done"
+                        value="1883"
+                        placeholder="Contoh: 1883">
+                </div>
+
+                <button type="submit" id="saveBtn">Save &amp; Reconnect MQTT</button>
+                <div id="status" class="status-msg" role="status" aria-live="polite"></div>
+            </form>
+        </section>
+
+        <a href="/smart-monitoring/" class="back-link">← Kembali ke Dashboard Smart Monitoring</a>
     </div>
 
+    <script type="module">
+        if (!('switch' in HTMLInputElement.prototype)) {
+            import('input-switch-polyfill').catch(() => {});
+        }
+    </script>
     <script>
-        // Mengambil pengaturan saat ini
+        const mqttForm = document.getElementById('mqttForm');
+        const mqttIpInput = document.getElementById('mqttIp');
+        const mqttPortInput = document.getElementById('mqttPort');
+        const saveBtn = document.getElementById('saveBtn');
+        const statusEl = document.getElementById('status');
+
+        const dummyForm = document.getElementById('dummyForm');
+        const dummyEnabledInput = document.getElementById('dummyEnabled');
+        const dhtEnabledInput = document.getElementById('dhtEnabled');
+        const trafficMockInput = document.getElementById('trafficMock');
+        const pirEnabledInput = document.getElementById('pirEnabled');
+        const intervalSecSelect = document.getElementById('intervalSec');
+        const saveDummyBtn = document.getElementById('saveDummyBtn');
+        const dummyStatusEl = document.getElementById('dummyStatus');
+
+        const seedHistoryBtn = document.getElementById('seedHistoryBtn');
+        const triggerPirBtn = document.getElementById('triggerPirBtn');
+        const clearDummyBtn = document.getElementById('clearDummyBtn');
+
+        // Ambil pengaturan MQTT saat ini
         fetch('/api/settings/mqtt')
             .then(res => res.json())
             .then(data => {
-                document.getElementById('mqttIp').value = data.ip || '';
+                mqttIpInput.value = data.ip || '';
                 if (data.port) {
-                    document.getElementById('mqttPort').value = data.port;
+                    mqttPortInput.value = data.port;
                 }
             })
-            .catch(err => console.error('Error fetching settings:', err));
+            .catch(err => console.error('Error fetching MQTT settings:', err));
 
-        function saveSettings() {
-            const ip = document.getElementById('mqttIp').value;
-            const port = document.getElementById('mqttPort').value || "1883";
-            const btn = document.getElementById('saveBtn');
-            const status = document.getElementById('status');
+        // Ambil pengaturan Dummy saat ini
+        fetch('/api/settings/dummy')
+            .then(res => res.json())
+            .then(data => {
+                dummyEnabledInput.checked = Boolean(data.enabled);
+                dhtEnabledInput.checked = data.dhtEnabled !== undefined ? Boolean(data.dhtEnabled) : true;
+                trafficMockInput.checked = data.trafficMock !== undefined ? Boolean(data.trafficMock) : true;
+                pirEnabledInput.checked = Boolean(data.pirEnabled);
+                if (data.intervalSec) {
+                    intervalSecSelect.value = String(data.intervalSec);
+                }
+            })
+            .catch(err => console.error('Error fetching dummy settings:', err));
 
-            if(!ip) {
-                status.textContent = "IP tidak boleh kosong!";
-                status.className = "status-msg error";
+        // Simpan pengaturan Dummy
+        dummyForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            saveDummyBtn.textContent = 'Menyimpan...';
+            saveDummyBtn.disabled = true;
+
+            const payload = {
+                enabled: dummyEnabledInput.checked,
+                dhtEnabled: dhtEnabledInput.checked,
+                trafficMock: trafficMockInput.checked,
+                pirEnabled: pirEnabledInput.checked,
+                intervalSec: parseInt(intervalSecSelect.value, 10) || 5
+            };
+
+            fetch('/api/settings/dummy', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(data => {
+                dummyStatusEl.textContent = data.message || 'Pengaturan dummy berhasil disimpan!';
+                dummyStatusEl.className = 'status-msg success';
+            })
+            .catch(() => {
+                dummyStatusEl.textContent = 'Gagal menyimpan pengaturan dummy!';
+                dummyStatusEl.className = 'status-msg error';
+            })
+            .finally(() => {
+                saveDummyBtn.textContent = 'Simpan Pengaturan Dummy';
+                saveDummyBtn.disabled = false;
+            });
+        });
+
+        // Aksi cepat: Generate riwayat 24 jam
+        seedHistoryBtn.addEventListener('click', () => {
+            seedHistoryBtn.disabled = true;
+            seedHistoryBtn.textContent = '⏳ Memproses...';
+
+            fetch('/api/settings/dummy/seed-history', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    dummyStatusEl.textContent = data.message || 'Riwayat 24 jam berhasil dibuat!';
+                    dummyStatusEl.className = 'status-msg success';
+                })
+                .catch(() => {
+                    dummyStatusEl.textContent = 'Gagal membuat riwayat 24 jam!';
+                    dummyStatusEl.className = 'status-msg error';
+                })
+                .finally(() => {
+                    seedHistoryBtn.disabled = false;
+                    seedHistoryBtn.textContent = '📈 Isi Riwayat 24 Jam';
+                });
+        });
+
+        // Aksi cepat: Trigger gerakan PIR dummy
+        triggerPirBtn.addEventListener('click', () => {
+            triggerPirBtn.disabled = true;
+            fetch('/api/settings/dummy/trigger-pir', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    dummyStatusEl.textContent = data.message || 'Trigger gerakan PIR terkirim!';
+                    dummyStatusEl.className = 'status-msg success';
+                })
+                .catch(() => {
+                    dummyStatusEl.textContent = 'Gagal memicu gerakan PIR!';
+                    dummyStatusEl.className = 'status-msg error';
+                })
+                .finally(() => {
+                    triggerPirBtn.disabled = false;
+                });
+        });
+
+        // Aksi cepat: Bersihkan semua data dummy
+        clearDummyBtn.addEventListener('click', () => {
+            clearDummyBtn.disabled = true;
+            fetch('/api/settings/dummy/data', { method: 'DELETE' })
+                .then(res => res.json())
+                .then(data => {
+                    dummyStatusEl.textContent = data.message || 'Data dummy berhasil dihapus!';
+                    dummyStatusEl.className = 'status-msg success';
+                })
+                .catch(() => {
+                    dummyStatusEl.textContent = 'Gagal menghapus data dummy!';
+                    dummyStatusEl.className = 'status-msg error';
+                })
+                .finally(() => {
+                    clearDummyBtn.disabled = false;
+                });
+        });
+
+        // Simpan pengaturan MQTT
+        mqttForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const ip = mqttIpInput.value.trim();
+            const port = mqttPortInput.value.trim() || '1883';
+
+            if (!ip) {
+                mqttIpInput.setAttribute('aria-invalid', 'true');
+                statusEl.textContent = 'IP tidak boleh kosong!';
+                statusEl.className = 'status-msg error';
+                mqttIpInput.focus();
                 return;
             }
 
-            btn.textContent = "Menyimpan...";
-            btn.disabled = true;
+            mqttIpInput.removeAttribute('aria-invalid');
+            saveBtn.textContent = 'Menyimpan...';
+            saveBtn.disabled = true;
 
             fetch('/api/settings/mqtt', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip, port: parseInt(port) })
+                body: JSON.stringify({ ip, port: parseInt(port, 10) || 1883 })
             })
             .then(res => res.json())
             .then(data => {
-                status.textContent = data.message || "Berhasil disimpan!";
-                status.className = "status-msg success";
+                statusEl.textContent = data.message || 'Berhasil disimpan!';
+                statusEl.className = 'status-msg success';
             })
-            .catch(err => {
-                status.textContent = "Gagal menyimpan pengaturan!";
-                status.className = "status-msg error";
+            .catch(() => {
+                statusEl.textContent = 'Gagal menyimpan pengaturan!';
+                statusEl.className = 'status-msg error';
             })
             .finally(() => {
-                btn.textContent = "Save & Reconnect";
-                btn.disabled = false;
+                saveBtn.textContent = 'Save & Reconnect MQTT';
+                saveBtn.disabled = false;
             });
-        }
+        });
+
+        mqttIpInput.addEventListener('input', () => {
+            mqttIpInput.removeAttribute('aria-invalid');
+        });
     </script>
 </body>
 </html>

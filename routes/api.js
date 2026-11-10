@@ -5,9 +5,10 @@ const { sensorDb, securityDb, settingsDb } = require('../config/db');
  * Pemetaan Route Express API
  * @param {object} mqttService - Layanan MQTT Client
  * @param {object} socketService - Layanan Socket.io Server
+ * @param {object} dummyService - Layanan Simulator Data Dummy
  * @returns {object} Router Express
  */
-module.exports = function (mqttService, socketService) {
+module.exports = function (mqttService, socketService, dummyService) {
   const router = express.Router();
 
   // Ambil histori data sensor DHT11 dengan filter waktu
@@ -84,6 +85,16 @@ module.exports = function (mqttService, socketService) {
   router.post('/traffic', (req, res) => {
     const { action } = req.body; // 'merah', 'kuning', 'hijau', atau 'off'
     if (['merah', 'kuning', 'hijau', 'off'].includes(action)) {
+      const dummyCfg = dummyService ? dummyService.getConfig() : { enabled: false };
+      if (dummyCfg.enabled && dummyCfg.trafficMock) {
+        const mappedStatus = action === 'off' ? 'MATI' : action.toUpperCase();
+        socketService.updateTrafficStatus(mappedStatus);
+        if (mqttService.isConnected()) {
+          mqttService.publishTrafficCommand(action);
+        }
+        return res.json({ message: `Perintah '${action}' diterapkan (Mode Simulasi).`, status: mappedStatus });
+      }
+
       if (mqttService.isConnected()) {
         mqttService.publishTrafficCommand(action);
         res.json({ message: `Perintah '${action}' berhasil dikirim.` });
@@ -93,6 +104,59 @@ module.exports = function (mqttService, socketService) {
     } else {
       res.status(400).json({ error: "Perintah tidak valid" });
     }
+  });
+
+  // Dapatkan pengaturan simulasi data dummy
+  router.get('/settings/dummy', (req, res) => {
+    if (!dummyService) return res.status(500).json({ error: "Layanan dummy belum siap" });
+    res.json(dummyService.getConfig());
+  });
+
+  // Simpan pengaturan simulasi data dummy
+  router.post('/settings/dummy', (req, res) => {
+    if (!dummyService) return res.status(500).json({ error: "Layanan dummy belum siap" });
+    dummyService.updateConfig(req.body || {}, (err, updated) => {
+      if (err) return res.status(500).json({ error: "Gagal menyimpan pengaturan data dummy" });
+      const stateLabel = updated.enabled ? 'DIAKTIFKAN' : 'DINONAKTIFKAN';
+      res.json({
+        message: `Mode Simulasi Data Dummy berhasil ${stateLabel}!`,
+        config: updated
+      });
+    });
+  });
+
+  // Generate riwayat data dummy 24 jam
+  router.post('/settings/dummy/seed-history', (req, res) => {
+    if (!dummyService) return res.status(500).json({ error: "Layanan dummy belum siap" });
+    dummyService.seedHistory24h((err, count) => {
+      if (err) return res.status(500).json({ error: "Gagal membuat riwayat data dummy" });
+      res.json({
+        message: `Berhasil membuat ${count} titik data riwayat suhu & kelembapan (24 jam terakhir)!`,
+        count
+      });
+    });
+  });
+
+  // Picu simulasi gerakan PIR secara instan
+  router.post('/settings/dummy/trigger-pir', (req, res) => {
+    if (!dummyService) return res.status(500).json({ error: "Layanan dummy belum siap" });
+    const log = dummyService.triggerDummyPir('Motion Detected');
+    res.json({
+      message: "Simulasi deteksi gerakan PIR berhasil dikirim ke dashboard!",
+      log
+    });
+  });
+
+  // Bersihkan seluruh data dummy dari database
+  router.delete('/settings/dummy/data', (req, res) => {
+    if (!dummyService) return res.status(500).json({ error: "Layanan dummy belum siap" });
+    dummyService.clearDummyData((err, result) => {
+      if (err) return res.status(500).json({ error: "Gagal menghapus data dummy" });
+      res.json({
+        message: `Berhasil membersihkan ${result.sensorRemoved} data sensor dummy & ${result.securityRemoved} log keamanan dummy.`,
+        ...result
+      });
+    });
   });
 
   // Dapatkan pengaturan IP/Port MQTT saat ini

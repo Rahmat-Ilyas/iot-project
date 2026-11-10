@@ -7,6 +7,7 @@ const cors = require('cors');
 // Impor modul konfigurasi database & layanan modular
 const socketService = require('./services/socket');
 const mqttService = require('./services/mqtt');
+const dummyService = require('./services/dummy');
 const apiRoutes = require('./routes/api');
 
 const app = express();
@@ -16,6 +17,7 @@ const io = new Server(server, { cors: { origin: '*' } });
 // Inisialisasi Layanan via Dependency Injection runtime
 socketService.init(io, mqttService);
 mqttService.init(socketService);
+dummyService.init(socketService);
 
 // Middleware Express
 app.use(cors());
@@ -23,7 +25,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // Hubungkan Router API terpusat
-app.use('/api', apiRoutes(mqttService, socketService));
+app.use('/api', apiRoutes(mqttService, socketService, dummyService));
 
 // Menjalankan Server di Port 3000
 const PORT = process.env.PORT || 3000;
